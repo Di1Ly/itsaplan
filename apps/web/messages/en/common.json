@@ -170,7 +170,11 @@
     "tableDeleteRow": "Delete row",
     "tableAddColumn": "Add column",
     "tableDeleteColumn": "Delete column",
-    "tableDelete": "Delete table"
+    "tableDelete": "Delete table",
+    "insertImage": "Insert image",
+    "insertNamed": "Insert {name}",
+    "noImages": "No images attached yet. Upload one from the Attachments panel, or drop it straight onto the editor.",
+    "image": "Image"
   },
   "chart": {
     "download": "Save chart",

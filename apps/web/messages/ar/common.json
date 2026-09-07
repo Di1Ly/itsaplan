@@ -170,7 +170,11 @@
     "tableDeleteRow": "حذف صف",
     "tableAddColumn": "إضافة عمود",
     "tableDeleteColumn": "حذف عمود",
-    "tableDelete": "حذف الجدول"
+    "tableDelete": "حذف الجدول",
+    "insertImage": "إدراج صورة",
+    "insertNamed": "إدراج {name}",
+    "noImages": "مفيش صور مرفقة لسه. ارفع صورة من لوحة المرفقات، أو ارميها على المحرر على طول.",
+    "image": "صورة"
   },
   "chart": {
     "download": "احفظ الرسم البياني",
