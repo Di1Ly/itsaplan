@@ -111,6 +111,9 @@ services:
       - S3_SECRET_ACCESS_KEY=${SERVICE_PASSWORD_MINIO}
       - S3_REGION=${S3_REGION:-us-east-1}
       - S3_FORCE_PATH_STYLE=${S3_FORCE_PATH_STYLE:-}
+      # Hosts trusted even though they resolve privately. Also governs webhook URL
+      # validation and attachment import.
+      - SSRF_ALLOWED_HOSTS=${SSRF_ALLOWED_HOSTS:-}
       # How long the pre-migration dumps are kept, and the switch that upgrades
       # without one. BACKUP_DIR is not among them: the volume below pins it.
       - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-}
@@ -149,6 +152,8 @@ services:
       TELEMETRY_DISABLED: ${TELEMETRY_DISABLED:-}
       DO_NOT_TRACK: ${DO_NOT_TRACK:-}
       TELEMETRY_DEBUG: ${TELEMETRY_DEBUG:-}
+      # The same list the api reads. This process delivers webhooks to those hosts.
+      SSRF_ALLOWED_HOSTS: ${SSRF_ALLOWED_HOSTS:-}
       # Optional tuning — defaults live in apps/worker/src/config.ts:
       # WEBHOOK_POLL_INTERVAL_MS, WEBHOOK_BATCH_SIZE, WEBHOOK_TIMEOUT_MS,
       # WEBHOOK_MAX_ATTEMPTS, WEBHOOK_DISABLE_THRESHOLD, WEBHOOK_LEASE_SECONDS,
