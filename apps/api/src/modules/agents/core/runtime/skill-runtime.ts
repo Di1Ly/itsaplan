@@ -43,8 +43,7 @@ export function buildSkillTool(projectId: number, skills: SkillRow[]) {
         skillId: z.number().describe('The id of the skill to load (from the Skills list).'),
         path: z
           .string()
-          .optional()
-          .describe('Optional reference file path (e.g. refs/example.md); omit for SKILL.md.'),
+          .describe('Use an empty string to load SKILL.md; use refs/... for a reference file.'),
       }),
       execute: async (input) => {
         const { skillId, path } = input;

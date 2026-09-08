@@ -47,7 +47,7 @@ services:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in .env}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in .env}
     volumes:
-      - minio-data:/data
+      - /home/wd/plane/data/minio:/data
     healthcheck:
       test: ['CMD', 'mc', 'ready', 'local']
       interval: 15s
@@ -98,6 +98,7 @@ services:
       # email links); APP_URL is the web origin (CORS, passkey, email links).
       API_URL: ${API_URL:?public origin of the api, e.g. https://api.example.com}
       APP_URL: ${APP_URL:?public origin of the web app, e.g. https://app.example.com}
+      MCP_TOOLS: ${MCP_TOOLS:-}
       # Set COOKIE_DOMAIN only to override the parent domain derived from
       # APP_URL (multi-label TLDs, deep subdomains).
       COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
@@ -196,4 +197,4 @@ services:
 
 volumes:
   postgres-data:
-  minio-data:
+#  minio-data:

@@ -44,3 +44,8 @@ coverage
 
 # agent scratch space (test docs, drafts)
 .workspace/
+
+# Local environment / backup files
+.env.before-*
+*.before-whitelist
+*.before-1999

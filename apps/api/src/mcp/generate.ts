@@ -102,12 +102,40 @@ function mergeInputSchema(hooks: Record<string, unknown>, pathParams: string[]):
   return { type: 'object', properties, required: [...new Set(required)] };
 }
 
+// Optional MCP tool whitelist.
+//
+// If MCP_TOOLS is not set, all MCP tools are exposed exactly as before.
+//
+// Example:
+//   MCP_TOOLS=list_projects
+//
+// Or:
+//   MCP_TOOLS=list_projects,get_project,list_issues
+//
+// The whitelist is applied while generating the tool table, so excluded tools
+// are absent from both tools/list and the server's internal tool lookup.
+function mcpToolWhitelist(): Set<string> | null {
+  const value = process.env.MCP_TOOLS?.trim();
+
+  if (!value) return null;
+
+  return new Set(
+    value
+      .split(',')
+      .map((name) => name.trim())
+      .filter(Boolean),
+  );
+}
+
+const MCP_TOOL_WHITELIST = mcpToolWhitelist();
+
 // The tool table derived from an app's routes, built once per app and cached: routes
 // are fixed after boot, so introspection runs on the first call only. Shared by the
 // MCP endpoint and the internal agent runtime, which build their tools from the same
 // table. Keyed by the app so a second app (a test's) gets its own table instead of
 // inheriting whichever one was generated first.
 const cache = new WeakMap<McpApp, McpRouteTool[]>();
+
 export function routeTools(app: McpApp): McpRouteTool[] {
   let tools = cache.get(app);
   if (!tools) {
@@ -119,8 +147,10 @@ export function routeTools(app: McpApp): McpRouteTool[] {
 
 function generateRouteTools(app: McpApp): McpRouteTool[] {
   const tools: McpRouteTool[] = [];
+
   for (const route of app.routes) {
     const hooks = route.hooks as Record<string, unknown>;
+
     const detail = hooks.detail as
       | {
           summary?: string;
@@ -128,9 +158,17 @@ function generateRouteTools(app: McpApp): McpRouteTool[] {
           'x-mcp'?: { tool?: string; annotations?: McpToolAnnotations };
         }
       | undefined;
+
     const tool = detail?.['x-mcp']?.tool;
     if (!tool) continue;
+
+    // If MCP_TOOLS is configured, expose only the selected tools.
+    if (MCP_TOOL_WHITELIST && !MCP_TOOL_WHITELIST.has(tool)) {
+      continue;
+    }
+
     const pathParams = extractPathParams(route.path);
+
     tools.push({
       name: tool,
       // The MCP tool description is the full text an LLM reads to pick a tool.
@@ -150,5 +188,6 @@ function generateRouteTools(app: McpApp): McpRouteTool[] {
       },
     });
   }
+
   return tools;
 }

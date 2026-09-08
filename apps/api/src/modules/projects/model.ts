@@ -9,7 +9,7 @@ import { COPY_INCLUDE_KEYS } from './copy';
 
 // The description goes into the system prompt of every agent run, where it costs
 // input tokens each time, so it is capped on the way in and cut again in the prompt.
-export const PROJECT_DESCRIPTION_LIMIT = 2000;
+export const PROJECT_DESCRIPTION_LIMIT = 1999;
 
 const projectBody = t.Object({
   key: t.String({ minLength: 1 }),
