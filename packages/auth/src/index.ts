@@ -1,12 +1,12 @@
 import { randomInt } from 'node:crypto';
-import { db } from '@repo/db';
+import { db, defaultMemberPermissions } from '@repo/db';
 import { eq, sql, type SQL } from 'drizzle-orm';
 import { betterAuth } from 'better-auth';
 import { createAuthMiddleware, APIError } from 'better-auth/api';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { passkey } from '@better-auth/passkey';
 import { apiKey } from '@better-auth/api-key';
-import { openAPI, magicLink, username, genericOAuth } from 'better-auth/plugins';
+import { mcp, openAPI, magicLink, username, genericOAuth } from 'better-auth/plugins';
 import type { GenericOAuthConfig } from 'better-auth/plugins/generic-oauth';
 import * as schema from '@repo/db/schema';
 import {
@@ -249,6 +249,9 @@ export const auth = betterAuth({
       verification: schema.verification,
       passkey: schema.passkey,
       apikey: schema.apikey,
+      oauthApplication: schema.oauthApplication,
+      oauthAccessToken: schema.oauthAccessToken,
+      oauthConsent: schema.oauthConsent,
     },
   }),
 
@@ -445,6 +448,28 @@ export const auth = betterAuth({
             },
           };
         },
+        // A project belongs to a team, so an account owns one from the moment it is
+        // created, named after the username the hook above settled on. The team is
+        // also where the roles its projects assign live, so it starts with the
+        // default one.
+        after: async (created) => {
+          const handle = typeof created.username === 'string' ? created.username : created.name;
+          await db.transaction(async (tx) => {
+            const [row] = await tx
+              .insert(schema.team)
+              .values({ name: handle })
+              .returning({ id: schema.team.id });
+            await tx
+              .insert(schema.teamMember)
+              .values({ teamId: row.id, userId: created.id, role: 'owner' });
+            await tx.insert(schema.teamRole).values({
+              teamId: row.id,
+              name: 'Member',
+              isDefault: true,
+              permissions: defaultMemberPermissions(),
+            });
+          });
+        },
       },
     },
     session: {
@@ -530,6 +555,18 @@ export const auth = betterAuth({
     username({
       minUsernameLength: USERNAME_MIN_LENGTH,
       maxUsernameLength: USERNAME_MAX_LENGTH,
+    }),
+    // Native OAuth 2.1 provider for Streamable HTTP MCP clients. It uses the
+    // existing Better Auth session, requires PKCE, and supports dynamic public
+    // clients such as ChatGPT without exposing a personal API key.
+    mcp({
+      loginPage: `${trustedOrigins[0]}/login`,
+      resource: `${baseURL}/mcp`,
+      oidcConfig: {
+        loginPage: `${trustedOrigins[0]}/login`,
+        requirePKCE: true,
+        consentPage: `${trustedOrigins[0]}/oauth/consent`,
+      },
     }),
     // OpenAPI reference for the better-auth handler. Serves a Scalar UI at
     // /api/auth/reference and the raw schema at /api/auth/open-api/generate-schema.
@@ -618,3 +655,9 @@ export type {
   InstanceOidcConfig,
   InstanceScimDto,
 } from './instance';
+
+export {
+  withMcpAuth,
+  oAuthDiscoveryMetadata,
+  oAuthProtectedResourceMetadata,
+} from 'better-auth/plugins';

@@ -4,6 +4,7 @@ import { app } from '../../../../app';
 import { authedApi, type Api } from '#tests/helpers/app';
 import { signUpTestUser } from '#tests/helpers/auth';
 import { resetDb } from '#tests/helpers/db';
+import { createRole, listProjectRoles } from '#tests/helpers/roles';
 
 // The inbound repository webhook: a verified pull request delivery moves the issues
 // its magic words name, through the same path a user's move takes (activity entries,
@@ -188,6 +189,41 @@ async function issueState(client: Api, issueId: number) {
 describe('Repository webhook', () => {
   beforeEach(async () => {
     await resetDb();
+  });
+
+  it('exposes connected development repositories from an issue', async () => {
+    const owner = await signUpTestUser({ name: 'Owner' });
+    const asOwner = authedApi(owner.cookie);
+    await asOwner.projects.post({ key: 'MKT', name: 'Marketing' });
+    const project = await asOwner.projects({ projectKey: 'MKT' }).get();
+    const issue = await createIssue(asOwner, project.data!.columns[0]!.id);
+
+    const response = await app.handle(
+      new Request(`http://localhost/issues/${issue.data!.id}/development/repositories`, {
+        headers: { cookie: owner.cookie },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual([]);
+  });
+
+  it('rejects linking from a repository outside the issue project', async () => {
+    const owner = await signUpTestUser({ name: 'Owner' });
+    const asOwner = authedApi(owner.cookie);
+    await asOwner.projects.post({ key: 'MKT', name: 'Marketing' });
+    const project = await asOwner.projects({ projectKey: 'MKT' }).get();
+    const issue = await createIssue(asOwner, project.data!.columns[0]!.id);
+
+    const response = await app.handle(
+      new Request(`http://localhost/issues/${issue.data!.id}/development`, {
+        method: 'POST',
+        headers: { cookie: owner.cookie, 'content-type': 'application/json' },
+        body: JSON.stringify({ repositoryId: 999, number: 1 }),
+      }),
+    );
+
+    expect(response.status).toBe(404);
   });
 
   it('closes the issue named by a closing magic word when the PR merges', async () => {
@@ -734,14 +770,14 @@ describe('Repository webhook', () => {
   it('hides the secret from a member who may read but not edit integrations', async () => {
     const { asOwner } = await setupProject();
     // A custom role with integrations read only, assigned to an invited member.
-    const catalog = await asOwner.projects({ projectKey: 'MKT' }).roles.get();
+    const catalog = await listProjectRoles(asOwner, 'MKT');
     const emptyMatrix = Object.fromEntries(
       Object.keys(catalog.data![0].permissions).map((r) => [
         r,
         { create: false, edit: false, read: false, delete: false },
       ]),
     );
-    const role = await asOwner.projects({ projectKey: 'MKT' }).roles.post({
+    const role = await createRole(asOwner, 'MKT', {
       name: 'Integrations viewer',
       permissions: {
         ...emptyMatrix,
